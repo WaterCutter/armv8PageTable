@@ -1,15 +1,9 @@
 /*
- * Author		HeHy
- * Date			20230216
- * Brief		cache&mmu related c interface,
- * 				lv1/lv2/lv3 page tables total consume 4K+16K+16K=36K space
- * */
+	author：water cutter
+	date: 20240715
+	brief: v8 aarch64, page table generating driver
+*/
 
-/*
- * ------------------------------------------------------------------------
- *
- *
- * */
 #include "a53_aarch64_driver.h"
 
 extern void _init_mmu_cache();
@@ -38,30 +32,6 @@ static inline unsigned long long calFirstLvTableLen(ADDRSPACE_GRANULE_SIZE agSiz
 	case VA512G_PA1T_Gra4K: return 512;
 	default:return 0;
 	}
-}
-
-/* if and only if cache ram in 4 part
- * 4*512*4K */
-static void setup_lv3_ttb()
-{
-	unsigned long long sAddrs[4] = {
-			RAM_P0_BEGIN_ADDR,
-			RAM_P1_BEGIN_ADDR,
-			RAM_P2_BEGIN_ADDR,
-			RAM_P3_BEGIN_ADDR};
-	for(unsigned long long ramIt = 0; ramIt<4; ramIt++){
-		// find the 2M area the ram belongs to
-		unsigned long long sOrdinalnum = sAddrs[ramIt]/0x200000;
-		unsigned long long* lv2PtPtr = (unsigned long long*)(LV2_PT_LOC_ADDR);
-		// change lv2 page table desc from D_Block to D_Table
-		unsigned long long lv3PgAddr = (LV3_PT_LOC_ADDR + ramIt*512*8);
-		lv2PtPtr[sOrdinalnum] = lv3PgAddr|(lv2PtPtr[sOrdinalnum]&(0xfff))|TABLE_DESC;
-		// add lv3 desc to lv3 table loaction
-		for(unsigned long long lv3It = 0; lv3It < 512; lv3It++){
-			*(unsigned long long*) (lv3PgAddr + lv3It*8) = (sAddrs[ramIt] + 0x1000*lv3It)&(~(0xFFF))|INDIFFERENCE|DEVICE_nGnRnE|LV3_PAGE_DESC;
-		}
-	}
-
 }
 
 /* 4*512*2M */
@@ -105,37 +75,6 @@ void set_cachebility_gran_2m(
 	}
 }
 
-/*
- lv3 page table (4k granule, each for 2M address space):
- ---------------------------------------------------------------------
- 	 |		P0		|		P1		|		P2		|		P3		|
- ---------------------------------------------------------------------
- page table size: 4*512*8 = 16KB
-
- different with lv1 and lv2 page tables, need mapping design
-*/
-void set_cachebility_gran_4k(
-		unsigned long long part,
-		unsigned long long sAddr,
-		unsigned long long eAddr,
-		MEM_AATR_IN_TTDESC cachebility)
-{
-
-	unsigned long long beginAddrs[4] = {
-				RAM_P0_BEGIN_ADDR,
-				RAM_P1_BEGIN_ADDR,
-				RAM_P2_BEGIN_ADDR,
-				RAM_P3_BEGIN_ADDR};
-	/* find ram the area belongs to */
-	unsigned long long baseAddr = beginAddrs[part];
-	unsigned long long sOrdinalnum = (sAddr-baseAddr)/0x1000;
-	unsigned long long eOrdinalnum = (eAddr-baseAddr)/0x1000;
-	unsigned long long* lv3PtPtr = (unsigned long long*)(LV3_PT_LOC_ADDR+part*0x1000);
-	/* change attr in lv3 page table */
-	for(unsigned long long pgIt = sOrdinalnum; pgIt<eOrdinalnum; pgIt++){
-		lv3PtPtr[pgIt] = (lv3PtPtr[pgIt]&(~0xfff))|INDIFFERENCE|cachebility|LV3_PAGE_DESC;
-	}
-}
 
 /* lv1 page table, 4*1G */
 void setup_ttb(
@@ -151,10 +90,8 @@ void setup_ttb(
 		*(unsigned long long*)(ttbBaseAddr + i*8) = (entryScale*i)&(~(0xFFF))|INDIFFERENCE|DEVICE_nGnRnE|BLOCK_DESC;
 	}
 	setup_lv2_ttb(ttbBaseAddr, firstLvTableLen, LV2_PT_LOC_ADDR);
-	setup_lv3_ttb();
 	set_cachebility_gran_2m(0x200000, 0x800000, NORMAL_WRITETHROUGH_RW_ALLOC);
 	set_cachebility_gran_2m(0x200000, 0x800000, DEVICE_nGnRnE);
-	set_cachebility_gran_4k(3,RAM_P3_BEGIN_ADDR,RAM_P3_BEGIN_ADDR+0x4000,NORMAL_WRITETHROUGH_RW_ALLOC);
 
 }
 
