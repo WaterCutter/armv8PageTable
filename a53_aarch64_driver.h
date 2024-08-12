@@ -1,26 +1,14 @@
 /*
- * Author		HeHy
- * Date			20230216
- * Brief
- * */
+	author：water cutter
+	date: 20240715
+	brief: v8 aarch64, page table generating driver
+*/
 
 #ifndef _A53_DRIVER_H
 
 /* page tables location */
 #define LV1_PT_LOC_ADDR (0x0004020000)
 #define LV2_PT_LOC_ADDR (LV1_PT_LOC_ADDR + 0x1000)
-#define LV3_PT_LOC_ADDR (LV2_PT_LOC_ADDR + 512*4*8)
-
-/* 4k granule size area */
-#define RAM_SIZE (256*1024)//0x100000
-#define RAM_P0_BEGIN_ADDR (0x10000000)
-#define RAM_P0_END_ADDR (0x100FFFFF)
-#define RAM_P1_BEGIN_ADDR (0x20000000)
-#define RAM_P1_END_ADDR (0x200FFFFF)
-#define RAM_P2_BEGIN_ADDR (0x30000000)
-#define RAM_P2_END_ADDR (0x300FFFFF)
-#define RAM_P3_BEGIN_ADDR (0x4000000)
-#define RAM_P3_END_ADDR (0x100FFFFF)
 
 /* mmu switch status */
 #define MMU_CACHE_OFF	(0)
